@@ -43,6 +43,16 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta =(AllowPrivateAccess = true))
 	TSubclassOf<UGameplayEffect> SampleEffect;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Infection", meta = (AllowPrivateAccess = "true"))
+	class USphereComponent* InfectionRadius;
+
+	UFUNCTION()
+	void OnInfectionRadiusOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Infection", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UGameplayEffect> GE_Infection;
 	
 	UPROPERTY()
 	UCoreAttributeSet* CoreAttributeSet;

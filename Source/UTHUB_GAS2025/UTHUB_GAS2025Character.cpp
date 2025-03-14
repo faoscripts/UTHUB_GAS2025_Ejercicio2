@@ -2,12 +2,14 @@
 
 #include "UTHUB_GAS2025Character.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "CoreAttributeSet.h"
 #include "GameplayBaseStateTags.h"
 #include "GameplayStatesManager.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SphereComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -60,6 +62,11 @@ AUTHUB_GAS2025Character::AUTHUB_GAS2025Character()
 		ASC->AddAttributeSetSubobject(CoreAttributeSet);
 	}
 	GASDataComponent = CreateDefaultSubobject<UGASDataComponent>(TEXT("GASData"));
+
+	InfectionRadius = CreateDefaultSubobject<USphereComponent>(TEXT("InfectionRadius"));
+	InfectionRadius->SetupAttachment(RootComponent);
+	InfectionRadius->SetSphereRadius(200.f);  // Ajusta el radio de infección
+	InfectionRadius->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 }
 
 void AUTHUB_GAS2025Character::Tick(float DeltaSeconds)
@@ -157,6 +164,8 @@ void AUTHUB_GAS2025Character::BeginPlay()
 	}
 	check(CharacterStates)
 	GameplayStates.AddTag(CharacterStates->Tag_Alive);
+	
+	InfectionRadius->OnComponentBeginOverlap.AddDynamic(this, &AUTHUB_GAS2025Character::OnInfectionRadiusOverlap);
 
 	InitializeCharacter();
 }
@@ -198,4 +207,24 @@ void AUTHUB_GAS2025Character::Jump()
 	Super::Jump();
 
 	GameplayStates.RemoveTag(FGameplayStatesManager::Get().Tag_InteractEnabled);
+}
+
+void AUTHUB_GAS2025Character::OnInfectionRadiusOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
+{
+	UAbilitySystemComponent* OtherASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
+	if (!OtherASC) return;
+
+	if (OtherASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("Effect.Infected"))))
+	{
+		if (ASC && !ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("Effect.Infected"))))
+		{
+			FGameplayEffectSpecHandle EffectSpecHandle = ASC->MakeOutgoingSpec(GE_Infection, 1.0f, ASC->MakeEffectContext());
+			if (EffectSpecHandle.IsValid())
+			{
+				ASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+				UE_LOG(LogTemp, Warning, TEXT("%s se ha infectado"), *GetName());
+			}
+		}
+	}
 }
